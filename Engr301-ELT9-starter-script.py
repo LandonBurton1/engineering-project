@@ -26,10 +26,10 @@ display_width = 128 # pixel x values = 0 to 127
 display_height = 64 # pixel y values = 0 to 63
 i2c = I2C(0, sda=Pin(0), scl=Pin(1), freq=400000) # TX pin is Pin 0, RX pin is Pin
 display = SSD1306_I2C(display_width, display_height, i2c)
-button = Button(15)
+button = Button(14)
 led = RGBLED(10,11,12)
 therm =ADC(28)
-pot = ADC(27)
+pot = ADC(26)
 
 
 ############################################################
@@ -82,9 +82,14 @@ client.DEBUG = True                                     # <<< DO NOT MODIFY >>>
 try:                                                    # <<< DO NOT MODIFY >>>
     client.connect()                                    # <<< DO NOT MODIFY >>>
     print("Connected to MQTT broker!")
+    display.fill(0) # clears display
+    display.text("Connected.", 0, 0) # write text starting at x=0 and y=0
+    display.show() # make the changes take effect
 except Exception as e:                                  # <<< DO NOT MODIFY >>>
     print("Failed to connect to MQTT broker:", e)
-    TempF = TempC * (9/5) + 32 #Celsius to Farenheit
+    display.fill(0) # clears display
+    display.text("Failed to connect.", 0, 0) # write text starting at x=0 and y=0
+    display.show() # make the changes take effect
     
     
 ############################################################
@@ -96,7 +101,7 @@ def getTempC():
     Tempk = 1/(A +(B*log(Rt)) + (C * pow(log(Rt),3))) # Converting the ADC val to Kelvin using steinhart
     TempC = Tempk - 273.15 #Changing from Kelvin to Celsius
     
-    print("Temp is: ",TempC)
+
     return(TempC)
 def getTempF():
     adc_value = therm.read_u16() #value of 65535 
@@ -105,19 +110,73 @@ def getTempF():
     Tempk = 1/(A +(B*log(Rt)) + (C * pow(log(Rt),3))) # Converting the ADC val to Kelvin using steinhart
     TempC = Tempk - 273.15 #Changing from Kelvin to Celsius
     TempF = TempC * (9/5) + 32 #Celsius to Farenheit
-    print("Temp is: ",TempF)
-    return(TempF)
 
+    return(TempF)
+def getTempK():
+    adc_value = therm.read_u16() #value of 65535 
+    V_out = (v_in/65535) * adc_value
+    Rt = (V_out * R1) / (v_in - V_out)
+    Tempk = 1/(A +(B*log(Rt)) + (C * pow(log(Rt),3))) # Converting the ADC val to Kelvin using steinhart
+    return(Tempk)
+
+
+###########
+### global variables ####
+Relstate = 0 # Relay on or off
+VTemp = ((26/65535) * 65535)+ 
+
+
+########
+### Lock code
+
+flag = False
+while flag == False:
+    
+    
+    
+    flag = True
+
+sleep(3)
 ############################################################
 ####################### INFINITE LOOP ######################
 ############################################################
+
+x = 0
+base = 19
+old = button.is_pressed #true or false
 while True: 
-    # !!!-- Psuedo temperature sensor reading between 50 and 55 --!!!
-    # !!!-- You must use this variable name: temperature_sensor_reading --!!!
-    # !!!-- Currently, the temperature reading is just a random number for demo purposes --!!!
-    temperature_sensor_reading = random.random()*5 + 50
-
-
+    if getTempC() >= base - VTemp and getTempC() <=base + VTemp:
+        led = (0,255,0)
+    else:
+        led = (255,0,0)
+        led.toggle()
+    temperature_sensor_reading = getTempC()
+    if x == 0:
+        temperature_sensor_reading = getTempC()
+        x = x+1
+        display.fill(0) # clears display
+        display.text("Celcius: ", 0, 0) # write text starting at x=0 and y=0
+        display.text(str(getTempC()), 0, 10) # write text starting at x=0 and y=0
+        display.text("Press to change", 0, 50) # write text starting at x=0 and y=0
+        display.show() # make the changes take effect
+    new = button.is_pressed 
+    if(old == True and new == False):
+        print("Button Pressed")
+        if x ==1:
+            x = x+1
+            display.fill(0) # clears display
+            display.text("Fahrenheit: ", 0, 0) # write text starting at x=0 and y=0
+            display.text(str(getTempF()), 0, 10) # write text starting at x=0 and y=0
+            display.text("Press to change", 0, 50) # write text starting at x=0 and y=0
+            display.show() # make the changes take effect
+        elif x==2:
+            x = 0
+            display.fill(0) # clears display
+            display.text("Kelvin: ", 0, 0) # write text starting at x=0 and y=0
+            display.text(str(getTempK()), 0, 10) # write text starting at x=0 and y=0
+            display.text("Press to change", 0, 50) # write text starting at x=0 and y=0
+            display.show() # make the changes take effect
+    old = new
     
     
     
